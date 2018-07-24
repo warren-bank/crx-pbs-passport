@@ -1,0 +1,12 @@
+{
+  "name": "PBS Passport",
+  "version": "0.1.0",
+  "description": "Enables videos on PBS website to play without a PBS Passport.",
+  "content_scripts": [{
+    "matches": ["*://player.pbs.org/*"],
+    "all_frames": true,
+    "run_at": "document_start",
+    "js": ["content.js"]
+  }],
+  "manifest_version": 2
+}
