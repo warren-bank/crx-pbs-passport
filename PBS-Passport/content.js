@@ -43,7 +43,7 @@ var payload = function(){
 
         if (video_MP4 || video_M3U8){
           // update <body> element
-          body = window.document.getElementsByTagName('body')[0]
+          body = document.getElementsByTagName('body')[0]
           while (body.firstChild) body.removeChild(body.firstChild)
 
           if (video_MP4)  body.appendChild(video_MP4)
