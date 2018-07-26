@@ -4,7 +4,7 @@ var payload = function(){
   }
   else {
     try {
-      var vb, video_MP4, video_M3U8, encoding, url, source, body
+      var vb, video_MP4, video_M3U8, encoding, url, source, track, body
 
       vb = window.videoBridge
       if (vb){
@@ -21,7 +21,7 @@ var payload = function(){
           // create <source> element
           source = document.createElement('source')
           source.type = 'video/mp4'
-          source.src = url
+          source.src  = url
 
           video_MP4.appendChild(source)
         }
@@ -39,6 +39,22 @@ var payload = function(){
           source.src = url
 
           video_M3U8.appendChild(source)
+        }
+
+        // .vtt
+        encoding = vb.cc
+        if (encoding && encoding.WebVTT && video_MP4){
+          url = encoding.WebVTT
+
+          // create <track> element
+          track = document.createElement('track')
+          track.label = 'subtitles'
+          track.kind  = 'subtitles'
+          track.src   = url
+          track.setAttribute('default', 'default')
+
+          video_MP4.appendChild(track)
+          video_MP4.setAttribute('crossorigin', 'anonymous')
         }
 
         if (video_MP4 || video_M3U8){
