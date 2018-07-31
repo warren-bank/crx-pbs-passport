@@ -4,15 +4,15 @@ var payload = function(){
   }
   else {
     try {
-      var vb, video_MP4, video_M3U8, encoding, url, source, body
+      var vb, encodings, video_MP4, video_M3U8, url, source, body
 
       vb = window.videoBridge
       if (vb){
+        encodings = vb.encodings
 
         // .mp4
-        encoding = vb.alternate_encoding
-        if (encoding && encoding.url){
-          url = encoding.url
+        if (encodings && encodings.length > 1){
+          url = encodings[1]
 
           // create <video> element
           video_MP4 = document.createElement('video')
@@ -27,9 +27,8 @@ var payload = function(){
         }
 
         // .m3u8
-        encoding = vb.recommended_encoding
-        if (encoding && encoding.url){
-          url = encoding.url
+        if (encodings && encodings.length > 0){
+          url = encodings[0]
 
           // create <video> element
           video_M3U8 = document.createElement('video')
