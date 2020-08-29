@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PBS Passport
 // @description  Play videos on PBS website without a PBS Passport. Optionally transfer video streams to alternate video players: WebCast-Reloaded, ExoAirPlayer.
-// @version      0.2.1
+// @version      0.2.2
 // @match        *://player.pbs.org/*
 // @icon         https://www.pbs.org/static/images/favicons/favicon-32x32.png
 // @run-at       document-idle
@@ -26,8 +26,29 @@ var user_options = {
 var payload = function(){
 
   // ===========================================================================
+  // returns Promise
 
-  const get_media_urls = () => {
+  const resolve_redirected_url = (url) => {
+    return (!url || (typeof url !== 'string'))
+      ? Promise.resolve(null)
+      : new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest()
+          xhr.open("GET", url, true)
+          xhr.onprogress = () => {
+            resolve(
+              ((xhr.status >= 200) && (xhr.status < 300) && (xhr.responseURL !== url))
+                ? xhr.responseURL
+                : url
+            )
+            xhr.abort()
+          }
+          xhr.send()
+        })
+  }
+
+  // ===========================================================================
+
+  const get_media_urls = async () => {
     let urls = null
 
     const vb = window.videoBridge
@@ -44,6 +65,16 @@ var payload = function(){
       "vtt" : ((txt && txt.WebVTT) ? txt.WebVTT : null),
       "srt" : ((txt && txt.SRT   ) ? txt.SRT    : null)
     }
+
+    // resolve URL redirects
+    if (urls.m3u8)
+      urls.m3u8 = await resolve_redirected_url(urls.m3u8)
+    if (urls.mp4)
+      urls.mp4  = await resolve_redirected_url(urls.mp4)
+    if (urls.vtt)
+      urls.vtt  = await resolve_redirected_url(urls.vtt)
+    if (urls.srt)
+      urls.srt  = await resolve_redirected_url(urls.srt)
 
     //Add video stream format hint to URLs, which do not directly include file extensions. They redirect to another URL which does. But this confuses many video players.
     if (urls.m3u8)
@@ -224,6 +255,18 @@ var payload = function(){
 
   // ===========================================================================
 
+  const init = async () => {
+    const urls = await get_media_urls()
+    if (!urls) return
+
+    if (window.redirect_to_webcast_reloaded)
+      transfer_stream(urls)
+    else
+      rewrite_dom(urls)
+  }
+
+  // ===========================================================================
+
   try {
     if (top.location != self.location){
       top.location = self.location.href
@@ -231,13 +274,7 @@ var payload = function(){
   }
   catch(e){}
 
-  const urls = get_media_urls()
-  if (!urls) return
-
-  if (window.redirect_to_webcast_reloaded)
-    transfer_stream(urls)
-  else
-    rewrite_dom(urls)
+  init()
 }
 
 var get_hash_code = function(str){
