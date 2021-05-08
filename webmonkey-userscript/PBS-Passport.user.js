@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PBS Passport
 // @description  Watch videos without a PBS Passport.
-// @version      2.0.0
+// @version      2.0.1
 // @match        *://pbs.org/*
 // @match        *://*.pbs.org/*
 // @icon         https://www.pbs.org/static/images/favicons/favicon-32x32.png
@@ -18,6 +18,8 @@
 // ----------------------------------------------------------------------------- constants
 
 var user_options = {
+  "resolve_media_urls":           true,  // requires Chrome 37+
+
   "redirect_to_webcast_reloaded": true,
   "force_http":                   true,
   "force_https":                  false
@@ -26,21 +28,25 @@ var user_options = {
 // ----------------------------------------------------------------------------- helpers
 
 const resolve_redirected_url = (url) => {
-  return (!url || (typeof url !== 'string'))
-    ? Promise.resolve(null)
-    : new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest()
-        xhr.open('GET', url, true)
-        xhr.onprogress = () => {
-          resolve(
-            ((xhr.status >= 200) && (xhr.status < 300) && (xhr.responseURL !== url))
-              ? xhr.responseURL
-              : url
-          )
-          xhr.abort()
-        }
-        xhr.send()
-      })
+  if (!url || ('string' !== (typeof url)))
+    return Promise.resolve(null)
+
+  if (!user_options.resolve_media_urls)
+    return Promise.resolve(url)
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('GET', url, true)
+    xhr.onprogress = () => {
+      if ((xhr.status >= 200) && (xhr.status < 300)) {
+        resolve(
+          (xhr.responseURL && (xhr.responseURL !== url)) ? xhr.responseURL : url
+        )
+        xhr.abort()
+      }
+    }
+    xhr.send()
+  })
 }
 
 // ----------------------------------------------------------------------------- URL links to tools on Webcast Reloaded website
