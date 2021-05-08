@@ -1,11 +1,12 @@
 ### [PBS Passport](https://github.com/warren-bank/crx-pbs-passport/tree/webmonkey-userscript/es6)
 
-[Userscript](https://github.com/warren-bank/crx-pbs-passport/raw/webmonkey-userscript/es6/webmonkey-userscript/PBS-Passport.user.js) to run in the [WebMonkey](https://github.com/warren-bank/Android-WebMonkey) application for Android.
+[Userscript](https://github.com/warren-bank/crx-pbs-passport/raw/webmonkey-userscript/es6/webmonkey-userscript/PBS-Passport.user.js) to run in both:
+* the [WebMonkey](https://github.com/warren-bank/Android-WebMonkey) application for Android
+* the [Tampermonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) web browser extension for Chrome/Chromium
 
-* [this branch](https://github.com/warren-bank/crx-pbs-passport/tree/webmonkey-userscript/es6) contains the ES6 variation of this userscript
-* [another branch](https://github.com/warren-bank/crx-pbs-passport/tree/webmonkey-userscript/es5) contains an ES5 variation
-* ES5 is mainly intended for use in versions of Android prior to 5.0
-  - running a version of Android System WebView that cannot be updated and cannot run modern javascript
+Its purpose is to:
+* redirect embedded videos from [pbs.org](https://www.pbs.org/) to an external player
+* bypass the "PBS Passport" paywall
 
 #### Legal:
 
