@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PBS Passport
 // @description  Watch videos without a PBS Passport.
-// @version      2.0.0
+// @version      2.0.2
 // @match        *://pbs.org/*
 // @match        *://*.pbs.org/*
 // @icon         https://www.pbs.org/static/images/favicons/favicon-32x32.png
@@ -154,11 +154,24 @@ var process_dash_url = function(dash_url, vtt_url, referer_url) {
 // ----------------------------------------------------------------------------- process video page
 
 var process_video_page = function() {
-  var iframe = unsafeWindow.document.querySelector('iframe[src^="https://player.pbs.org/"]')
+  var iframe, url
+
+  // method #1: requires a very modern web browser to properly execute webpage javascript
+
+  iframe = unsafeWindow.document.querySelector('iframe[src^="https://player.pbs.org/"]')
 
   if (iframe) {
-    var url = iframe.getAttribute('src')
+    url = iframe.getAttribute('src')
     redirect_to_url(url)
+    return
+  }
+
+  // method #2: fallback to derive the URL of iframe from variables declared by webpage javascript
+
+  if (unsafeWindow.PBS && unsafeWindow.PBS.playerConfig && unsafeWindow.PBS.playerConfig.embedURL && unsafeWindow.PBS.playerConfig.embedType && unsafeWindow.PBS.playerConfig.id) {
+    url = unsafeWindow.PBS.playerConfig.embedURL + unsafeWindow.PBS.playerConfig.embedType + unsafeWindow.PBS.playerConfig.id
+    redirect_to_url(url)
+    return
   }
 }
 
