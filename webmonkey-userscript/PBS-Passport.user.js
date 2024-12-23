@@ -1,8 +1,7 @@
 // ==UserScript==
 // @name         PBS Passport
 // @description  Watch videos without a PBS Passport.
-// @version      2.0.3
-// @match        *://pbs.org/*
+// @version      2.0.4
 // @match        *://*.pbs.org/*
 // @icon         https://www.pbs.org/static/images/favicons/favicon-32x32.png
 // @run-at       document-end
@@ -19,6 +18,7 @@
 
 var user_options = {
   "common": {
+    "show_debug_alerts":            false,
     "resolve_media_urls":           true  // requires Chrome 37+
   },
   "webmonkey": {
@@ -28,6 +28,14 @@ var user_options = {
     "redirect_to_webcast_reloaded": true,
     "force_http":                   true,
     "force_https":                  false
+  }
+}
+
+// ----------------------------------------------------------------------------- helpers (debugging)
+
+var debug_alert = function(msg) {
+  if (user_options.common.show_debug_alerts) {
+    unsafeWindow.alert(msg)
   }
 }
 
@@ -172,45 +180,204 @@ var process_dash_url = function(dash_url, vtt_url, referer_url) {
 // ----------------------------------------------------------------------------- process video page
 
 var process_video_page = function() {
-  var iframe, url
+  process_video_page_01() ||
+  process_video_page_02() ||
+  process_video_page_03() ||
+  process_video_page_04() ||
+  process_video_page_05() ||
+  process_video_page_06() ||
+  setTimeout(
+    process_video_page_03,
+    2500
+  )
+}
 
-  // method #1: requires a very modern web browser to properly execute webpage javascript
+var process_video_page_01 = function() {
+  // method #1: extract video URLs from variables defined in javascript
+
+  if (Array.isArray(unsafeWindow.__next_f)) {
+    debug_alert('found array of raw data. length: ' + unsafeWindow.__next_f.length)
+    for (var i=0; i < unsafeWindow.__next_f.length; i++) {
+      if (Array.isArray(unsafeWindow.__next_f[i]) && (unsafeWindow.__next_f[i].length > 1) && (typeof unsafeWindow.__next_f[i][1] === 'string')) {
+        if (process_video_page_raw_data_video_urls(unsafeWindow.__next_f[i][1], false)) return true
+      }
+    }
+  }
+  debug_alert('video JSON not found in defined variables')
+  return false
+}
+
+var process_video_page_02 = function() {
+  // method #2: extract video URLs from raw page content
+
+  var scripts
+  scripts = document.querySelectorAll('script')
+  scripts = Array.prototype.slice.call(scripts)
+  scripts = scripts.filter(function(s){return s.innerText.indexOf('\\"hls_videos\\"') !== -1})
+
+  if (scripts.length) {
+    debug_alert('found inline scripts containing raw data. length: ' + scripts.length)
+    for (var i=0; i < scripts.length; i++) {
+      if (process_video_page_raw_data_video_urls(scripts[i].innerText, true)) return true
+    }
+  }
+  debug_alert('video JSON not found in script tags')
+  return false
+}
+
+var process_video_page_raw_data_video_urls_regex = /\{\\?"video\\?":\{.*?\\?"hls_videos\\?":\[.*?\\?"mp4_videos\\?":\[.*\\?"closed_captions\\?":\[.*?\\?"VideoPage\.tsx\\?"\}/
+
+var process_video_page_raw_data_video_urls = function(haystack, doublequotes_are_escaped) {
+  var needle
+  var HLS, MP4, VTT, SRT
+
+  needle = process_video_page_raw_data_video_urls_regex.exec(haystack)
+  if (needle) {
+    try {
+      needle = needle[0]
+      needle = needle.replace(/\\(\\)/g, '$1')
+      if (doublequotes_are_escaped)
+        needle = needle.replace(/\\(")/g, '$1')
+      needle = JSON.parse(needle)
+      console.log(needle) // parsed object
+      debug_alert('found and parsed video JSON')
+    }
+    catch(e){
+      console.log('error', e)
+      console.log(needle) // string that failed to parse
+      debug_alert('found video JSON that failed to parse')
+      needle = null
+    }
+  }
+  if (needle) {
+    try {
+      HLS = (needle.video.hls_videos.length > 0) ? needle.video.hls_videos[0].url : null
+      MP4 = (needle.video.mp4_videos.length > 0) ? needle.video.mp4_videos[0].url : null
+
+      for (var i=0; i < needle.video.closed_captions.length; i++) {
+        if (needle.video.closed_captions[i].profile === 'WebVTT')
+          VTT = needle.video.closed_captions[i].url
+        if (needle.video.closed_captions[i].profile === 'SRT')
+          SRT = needle.video.closed_captions[i].url
+      }
+
+      process_video_urls(HLS, MP4, VTT, SRT)
+      return true
+    }
+    catch(e) {
+    }
+  }
+  return false
+}
+
+var process_video_page_03 = function() {
+  // method #3: obtain URL for video player from iframe, which requires a very modern web browser to properly execute webpage javascript
+
+  var iframe, url
 
   iframe = unsafeWindow.document.querySelector('iframe[src^="https://player.pbs.org/"]')
 
   if (iframe) {
     url = iframe.getAttribute('src')
+    debug_alert('found video player iframe. url: ' + url)
     redirect_to_url(url)
-    return
+    return true
   }
+  debug_alert('video player iframe not found')
+  return false
+}
 
-  // method #2: fallback to derive the URL of iframe from variables declared by webpage javascript
+var process_video_page_04 = function() {
+  // method #4: derive URL for video player from variables defined in javascript (defunct: these variables no-longer appear to be defined)
+
+  var url
 
   if (unsafeWindow.PBS && unsafeWindow.PBS.playerConfig && unsafeWindow.PBS.playerConfig.embedURL && unsafeWindow.PBS.playerConfig.embedType && unsafeWindow.PBS.playerConfig.id) {
     url = unsafeWindow.PBS.playerConfig.embedURL + unsafeWindow.PBS.playerConfig.embedType + unsafeWindow.PBS.playerConfig.id
+    debug_alert('found video player config. url: ' + url)
     redirect_to_url(url)
-    return
+    return true
   }
+  debug_alert('video player config not found')
+  return false
+}
+
+var process_video_page_05 = function() {
+  // method #5: extract video player URL from variables defined in javascript
+
+  if (Array.isArray(unsafeWindow.__next_f)) {
+    debug_alert('found array of raw data. length: ' + unsafeWindow.__next_f.length)
+    for (var i=0; i < unsafeWindow.__next_f.length; i++) {
+      if (Array.isArray(unsafeWindow.__next_f[i]) && (unsafeWindow.__next_f[i].length > 1) && (typeof unsafeWindow.__next_f[i][1] === 'string')) {
+        if (process_video_page_raw_data_video_player_url(unsafeWindow.__next_f[i][1], false)) return true
+      }
+    }
+  }
+  debug_alert('video player JSON not found in defined variables')
+  return false
+}
+
+var process_video_page_06 = function() {
+  // method #6: extract video player URL from raw page content
+
+  var scripts
+  scripts = document.querySelectorAll('script')
+  scripts = Array.prototype.slice.call(scripts)
+  scripts = scripts.filter(function(s){return s.innerText.indexOf('\\"contentUrl\\"') !== -1})
+
+  if (scripts.length) {
+    debug_alert('found inline scripts containing raw data. length: ' + scripts.length)
+    for (var i=0; i < scripts.length; i++) {
+      if (process_video_page_raw_data_video_player_url(scripts[i].innerText, true)) return true
+    }
+  }
+  debug_alert('video player JSON not found in script tags')
+  return false
+}
+
+var process_video_page_raw_data_video_player_url_regex = /\\?"contentUrl\\?":\\?"(https:\/\/player\.pbs\.org\/[^\\"]+)\\?"/
+
+var process_video_page_raw_data_video_player_url = function(haystack, doublequotes_are_escaped) {
+  var needle, url
+
+  needle = process_video_page_raw_data_video_player_url_regex.exec(haystack)
+  if (needle) {
+    url = needle[1]
+    debug_alert('found video player config. url: ' + url)
+    redirect_to_url(url)
+    return true
+  }
+  return false
 }
 
 // ----------------------------------------------------------------------------- process video player
 
 var process_video_player = function() {
+  var HLS, MP4, VTT, SRT
+  var vb, vid, txt
+
   try {
-    const extract_video = async () => {
-      const vb = unsafeWindow.videoBridge
-      if (!vb) throw ''
+    vb = unsafeWindow.videoBridge
+    if (!vb) throw ''
 
-      let vid = vb.encodings
-      if (!vid || !vid.length) throw ''
+    vid = vb.encodings
+    if (!vid || !vid.length) throw ''
 
-      let HLS = (vid.length > 0) ? vid[0] : null
-      let MP4 = (vid.length > 1) ? vid[1] : null
+    HLS = (vid.length > 0) ? vid[0] : null
+    MP4 = (vid.length > 1) ? vid[1] : null
 
-      let txt = vb.cc
-      let VTT = (txt && txt.WebVTT) ? txt.WebVTT : null
-      let SRT = (txt && txt.SRT)    ? txt.SRT    : null
+    txt = vb.cc
+    VTT = (txt && txt.WebVTT) ? txt.WebVTT : null
+    SRT = (txt && txt.SRT)    ? txt.SRT    : null
 
+    process_video_urls(HLS, MP4, VTT, SRT)
+  }
+  catch(e) {}
+}
+
+var process_video_urls = function(HLS, MP4, VTT, SRT) {
+  try {
+    const resolve_urls = async () => {
       if (HLS) {
         HLS  = await resolve_redirected_url(HLS)
         HLS += '#video.m3u8'
@@ -220,7 +387,7 @@ var process_video_player = function() {
         MP4 += '#video.mp4'
       }
 
-      vid = HLS || MP4
+      const vid = HLS || MP4
       if (!vid) throw ''
 
       const type = (HLS) ? 'application/x-mpegurl' : 'video/mp4'
@@ -234,12 +401,12 @@ var process_video_player = function() {
         SRT += '#text.srt'
       }
 
-      txt = VTT || SRT
+      const txt = VTT || SRT
 
       process_video_url(/* video_url= */ vid, /* video_type= */ type, /* vtt_url= */ txt)
     }
 
-    extract_video()
+    resolve_urls()
     .catch(e => {})
   }
   catch(e) {}
@@ -256,6 +423,7 @@ var init_video_page = function() {
   if (pathname.indexOf('/video/') !== 0)
     return false
 
+  debug_alert('process: video page')
   process_video_page()
   return true
 }
@@ -266,16 +434,27 @@ var init_video_player = function() {
   if (hostname !== 'player.pbs.org')
     return false
 
+  debug_alert('process: video player')
   process_video_player()
   return true
 }
 
 var init = function() {
-  if ((typeof GM_getUrl === 'function') && (GM_getUrl() !== unsafeWindow.location.href)) return
+  var gmUrl
+  if (typeof GM_getUrl === 'function') {
+    gmUrl = GM_getUrl()
+    if (gmUrl && (gmUrl !== unsafeWindow.location.href)) {
+      debug_alert("init() bypass:\n\nCurrent window is stale:\n" + unsafeWindow.location.href + "\n\nWebView is loading:\n" + gmUrl)
+      return
+    }
+  }
 
   init_video_page() || init_video_player()
 }
 
-init()
+if (document.readyState === 'complete')
+  init()
+else
+  unsafeWindow.addEventListener('load', init)
 
 // -----------------------------------------------------------------------------
