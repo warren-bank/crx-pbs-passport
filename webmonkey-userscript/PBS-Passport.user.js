@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PBS Passport
 // @description  Watch videos without a PBS Passport.
-// @version      2.0.5
+// @version      2.0.6
 // @match        *://*.pbs.org/*
 // @icon         https://www.pbs.org/static/images/favicons/favicon-32x32.png
 // @run-at       document-end
@@ -225,7 +225,7 @@ var process_video_page_02 = function() {
   return false
 }
 
-var process_video_page_raw_data_video_urls_regex = /\{\\?"video\\?":\{.*?\\?"hls_videos\\?":\[.*?\\?"mp4_videos\\?":\[.*\\?"closed_captions\\?":\[.*?\\?"showOverlay\\?":\s*(?:true|false)\s*\}/
+var process_video_page_raw_data_video_urls_regex = /(\{\\?"video\\?":\{.*?\\?"hls_videos\\?":\[.*?\\?"mp4_videos\\?":\[.*\\?"closed_captions\\?":\[.*?\})\],\\?"\$L/
 
 var process_video_page_raw_data_video_urls = function(haystack, doublequotes_are_escaped) {
   var needle
@@ -234,7 +234,7 @@ var process_video_page_raw_data_video_urls = function(haystack, doublequotes_are
   needle = process_video_page_raw_data_video_urls_regex.exec(haystack)
   if (needle) {
     try {
-      needle = needle[0]
+      needle = needle[1]
       needle = needle.replace(/\\(\\)/g, '$1')
       if (doublequotes_are_escaped)
         needle = needle.replace(/\\(")/g, '$1')
