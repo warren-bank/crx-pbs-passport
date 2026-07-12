@@ -1,8 +1,9 @@
 // ==UserScript==
 // @name         PBS Passport
 // @description  Watch videos without a PBS Passport.
-// @version      2.0.6
+// @version      2.0.7
 // @match        *://*.pbs.org/*
+// @match        *://video.kqed.org/video/*
 // @icon         https://www.pbs.org/static/images/favicons/favicon-32x32.png
 // @run-at       document-end
 // @homepage     https://github.com/warren-bank/crx-pbs-passport/tree/webmonkey-userscript/es6
@@ -275,10 +276,11 @@ var process_video_page_03 = function() {
 
   var iframe, url
 
-  iframe = unsafeWindow.document.querySelector('iframe[src^="https://player.pbs.org/"]')
+  iframe = unsafeWindow.document.querySelector('iframe[src^="https://player.pbs.org/"],iframe[src^="//player.pbs.org/"]')
 
   if (iframe) {
     url = iframe.getAttribute('src')
+    if (url.substring(0,2) === '//') url = 'https:' + url
     debug_alert('found video player iframe. url: ' + url)
     redirect_to_url(url)
     return true
@@ -418,7 +420,7 @@ var init_video_page = function() {
   var hostname = unsafeWindow.location.hostname.toLowerCase()
   var pathname = unsafeWindow.location.pathname.toLowerCase()
 
-  if (hostname !== 'www.pbs.org')
+  if ((hostname !== 'www.pbs.org') && (hostname !== 'video.kqed.org'))
     return false
   if (pathname.indexOf('/video/') !== 0)
     return false
